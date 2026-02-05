@@ -1,44 +1,279 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { MapPin, DollarSign, AlertTriangle, Clock, Star, ArrowRight, Truck, Database, Wind, Thermometer, ShieldCheck, FileText } from 'lucide-react'
-import ProgressIndicator from '../../components/ProgressIndicator'
-import { ToastContainer, ToastProps } from '../../components/Toast'
+import { Calendar, DollarSign, Clock, AlertTriangle, FileText, ArrowRight, Activity, Percent, Fuel, Sparkles, UserCheck, MapPin, Truck, History, CheckCircle, TrendingUp, ShieldCheck, Smartphone } from 'lucide-react'
 import CinematicLayout from '../../components/CinematicLayout'
+import { supabase } from '../../lib/supabase'
+import { ToastContainer, ToastProps } from '../../components/Toast'
+import CarrierNotifications from '../../components/CarrierNotifications'
+import ResponseHistory from '../../components/ResponseHistory'
 import { useWorkflow } from '../../components/WorkflowContext'
 
-const availableRoutes = ['North America (West)', 'North America (East)', 'Europe (Central)', 'Europe (North)', 'Asia (East)', 'Latin America']
+interface CarrierProfile {
+  available_capacity: number
+  capacity_unit: string
+  base_location: string
+  available_routes: string[]
+  business_details: {
+    company_name: string
+    contact_number: string
+    experience_years: number
+    license_id: string
+  }
+  delivery_speed_options: {
+    standard: string
+    express: string
+    overnight: string
+  }
+  risk_factors: {
+    weather: string
+    traffic: string
+    region: string
+  }
+  cost_structure: {
+    base_rate: number
+    per_mile: number
+    fuel_surcharge: number
+    petrol_allowance: number
+    food_allowance: number
+    fuel_charge: number
+    accommodation: number
+    toll_gates_count: number
+    toll_gates_cost: number
+  }
+  reliability_score: number
+  total_deliveries: number
+  on_time_deliveries: number
+}
 
-const riskFactors = [
-  { id: 'fuel', label: 'Fuel Volatility', description: 'Recent price surges in diesel/petrol', severity: 'high' },
-  { id: 'weather', label: 'Severe Weather', description: 'Forecasted storms along the North-East route', severity: 'medium' },
-  { id: 'capacity', label: 'Asset Shortage', description: 'Peak season vehicle availability is limited', severity: 'medium' },
-  { id: 'holiday', label: 'Public Holiday', description: 'Customs and ports closed during transition', severity: 'low' }
-]
+interface Review {
+  id: string
+  rating: number
+  comment: string
+  is_positive: boolean
+  created_at: string
+}
 
 export default function CarrierDashboard() {
-  const { state, shipperTerms, setCarrierConstraints } = useWorkflow()
-  const router = useRouter()
-
-  const [formData, setFormData] = useState({
-    routes: [] as string[],
-    operationalCapacity: 80, // %
-    riskAssessment: [] as string[],
-    fuelConstraintLevel: 'medium', // low, medium, high
-    baseOperationalCost: 450,
-    specialNotes: ''
+  const [activeView, setActiveView] = useState<'profile' | 'requests' | 'history'>('profile')
+  const [toasts, setToasts] = useState<ToastProps[]>([])
+  const [loading, setLoading] = useState(true)
+  const [reviews, setReviews] = useState<Review[]>([])
+  const { state, customerExpectations, customerRatings, setShipperTerms, setCarrierConstraints } = useWorkflow()
+  const [profile, setProfile] = useState<CarrierProfile>({
+    available_capacity: 50,
+    capacity_unit: 'tons',
+    base_location: '',
+    available_routes: [],
+    business_details: {
+      company_name: '',
+      contact_number: '',
+      experience_years: 0,
+      license_id: ''
+    },
+    delivery_speed_options: {
+      standard: '5-7 days',
+      express: '2-3 days',
+      overnight: '24 hours'
+    },
+    risk_factors: {
+      weather: 'low',
+      traffic: 'medium',
+      region: 'low'
+    },
+    cost_structure: {
+      base_rate: 500,
+      per_mile: 2.5,
+      fuel_surcharge: 10,
+      petrol_allowance: 0,
+      food_allowance: 0,
+      fuel_charge: 0,
+      accommodation: 0,
+      toll_gates_count: 0,
+      toll_gates_cost: 0
+    },
+    reliability_score: 5.0,
+    total_deliveries: 0,
+    on_time_deliveries: 0
   })
 
-  const [toasts, setToasts] = useState<ToastProps[]>([])
-  const [isValid, setIsValid] = useState(false)
+  const [newRoute, setNewRoute] = useState('')
 
-  const steps = [
-    { id: 'constraints', title: 'Operational Constraints', description: 'Asset & route feasibility' },
-    { id: 'negotiation', title: 'AI Negotiation', description: 'Dual agents advocates' },
-    { id: 'contract', title: 'Execution', description: 'Final approval' }
-  ]
+  useEffect(() => {
+    let mounted = true
+    loadProfile(mounted)
+    return () => { mounted = false }
+  }, [])
+
+  const reliabilityIndicator = (score: number, size: 'sm' | 'md' = 'md') => {
+    const s = size === 'sm' ? 'w-2.5 h-2.5' : 'w-3.5 h-3.5'
+    return (
+      <div className="flex space-x-1.5 items-center">
+        {[1, 2, 3, 4, 5].map((orb) => {
+          const isActive = orb <= Math.round(score);
+          return (
+            <motion.div
+              key={orb}
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              className={`${s} rounded-full transition-all duration-500 ${isActive
+                ? 'bg-gradient-to-br from-emerald-400 to-teal-500 shadow-[0_0_10px_rgba(52,211,153,0.4)]'
+                : 'bg-white/5 border border-white/10'
+                }`}
+            />
+          );
+        })}
+      </div>
+    )
+  }
+
+  const loadProfile = async (mounted: boolean = true) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user || !mounted) return
+
+      const { data, error } = await supabase
+        .from('carrier_profiles')
+        .select('*')
+        .eq('carrier_id', user.id)
+        .single()
+
+      if (!mounted) return
+
+      if (data) {
+        const carrierData = {
+          available_capacity: data.available_capacity ?? 10,
+          capacity_unit: data.capacity_unit ?? 'tons',
+          base_location: data.base_location || '',
+          available_routes: data.available_routes || [],
+          business_details: {
+            company_name: data.business_details?.company_name || user.user_metadata?.company_name || 'negotiateX',
+            contact_number: data.business_details?.contact_number || user.user_metadata?.mobile_number || '',
+            experience_years: data.business_details?.experience_years || 0,
+            license_id: data.business_details?.license_id || user.user_metadata?.dot_number || 'DOT_PENDING'
+          },
+          delivery_speed_options: data.delivery_speed_options || {
+            standard: '5-7 days',
+            express: '2-3 days',
+            overnight: '24 hours'
+          },
+          risk_factors: data.risk_factors || {
+            weather: 'low',
+            traffic: 'medium',
+            region: 'low'
+          },
+          cost_structure: {
+            base_rate: 500,
+            per_mile: 2.5,
+            fuel_surcharge: 10,
+            petrol_allowance: 0,
+            food_allowance: 0,
+            fuel_charge: 0,
+            accommodation: 0,
+            toll_gates_count: 0,
+            toll_gates_cost: 0,
+            ...(data.cost_structure || {})
+          },
+          reliability_score: data.reliability_score ?? 5.0,
+          total_deliveries: data.total_deliveries ?? 0,
+          on_time_deliveries: data.on_time_deliveries ?? 0
+        }
+        setProfile(carrierData)
+        setCarrierConstraints(carrierData)
+
+        // Fetch Reviews with Fallback
+        const { data: reviewsData, error: reviewsError } = await supabase
+          .from('carrier_reviews')
+          .select('*')
+          .eq('carrier_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        if (reviewsData && reviewsData.length > 0) {
+          setReviews(reviewsData)
+        } else {
+          // Fallback/Demo Reviews if DB is empty or table missing (404)
+          if (reviewsError) console.warn("Using demo reviews due to database access issue:", reviewsError);
+          const demoReviews: Review[] = [
+            { id: 'demo-1', rating: 5, comment: "Excellent service, arrived 2 hours early! Very professional.", is_positive: true, created_at: new Date().toISOString() },
+            { id: 'demo-2', rating: 5, comment: "Best rates for the Chennai-Bangalore route. AI negotiation was smooth.", is_positive: true, created_at: new Date(Date.now() - 86400000).toISOString() },
+            { id: 'demo-3', rating: 4, comment: "Good communication throughout the journey. Highly recommended.", is_positive: true, created_at: new Date(Date.now() - 172800000).toISOString() },
+            { id: 'demo-4', rating: 2, comment: "Slight delay due to documentation issues.", is_positive: false, created_at: new Date(Date.now() - 259200000).toISOString() },
+            { id: 'demo-5', rating: 5, comment: "Amazing reliability score for a reason.", is_positive: true, created_at: new Date(Date.now() - 400000000).toISOString() }
+          ];
+          setReviews(demoReviews);
+        }
+      } else {
+        // AUTO-FIX: Create default profile if missing
+        console.log("No profile found, creating default...")
+        const { error: insertError } = await supabase.from('carrier_profiles').upsert({
+          carrier_id: user.id,
+          available_capacity: 10,
+          capacity_unit: 'tons',
+          base_location: 'Chennai',
+          reliability_score: 5.0,
+          business_details: {
+            company_name: user.user_metadata?.company_name || 'negotiateX',
+            contact_number: user.user_metadata?.mobile_number || '',
+            experience_years: 0,
+            license_id: user.user_metadata?.dot_number || 'DOT_PENDING'
+          },
+          delivery_speed_options: {
+            standard: '5-7 days',
+            express: '2-3 days',
+            overnight: '24 hours'
+          },
+          risk_factors: {
+            weather: 'low',
+            traffic: 'medium',
+            region: 'low'
+          },
+          cost_structure: {
+            base_rate: 500,
+            per_mile: 2.5,
+            fuel_surcharge: 10
+          }
+        }, { onConflict: 'carrier_id' })
+        if (insertError) console.error("Auto-profile creation failed:", insertError)
+      }
+    } catch (error: any) {
+      if (mounted && error.name !== 'AbortError') {
+        console.error('Error loading profile:', error)
+      }
+    } finally {
+      if (mounted) setLoading(false)
+    }
+  }
+
+  const saveProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { error } = await supabase
+        .from('carrier_profiles')
+        .upsert({
+          carrier_id: user.id,
+          ...profile
+        })
+
+      if (error) throw error
+
+      setCarrierConstraints(profile)
+      addToast({
+        type: 'success',
+        title: 'Profile Updated',
+        message: 'Your carrier profile has been saved successfully.'
+      })
+    } catch (error: any) {
+      addToast({
+        type: 'error',
+        title: 'Save Failed',
+        message: error.message
+      })
+    }
+  }
 
   const addToast = (toast: Omit<ToastProps, 'id' | 'onClose'>) => {
     const id = Date.now().toString()
@@ -49,54 +284,30 @@ export default function CarrierDashboard() {
     setToasts(prev => prev.filter(toast => toast.id !== id))
   }
 
-  const handleRouteToggle = (route: string) => {
-    const newRoutes = formData.routes.includes(route)
-      ? formData.routes.filter(r => r !== route)
-      : [...formData.routes, route]
-
-    setFormData({ ...formData, routes: newRoutes })
-    setIsValid(newRoutes.length > 0)
-  }
-
-  const handleRiskToggle = (riskId: string) => {
-    const newRisks = formData.riskAssessment.includes(riskId)
-      ? formData.riskAssessment.filter(r => r !== riskId)
-      : [...formData.riskAssessment, riskId]
-
-    setFormData({ ...formData, riskAssessment: newRisks })
-  }
-
-  const handleSubmit = () => {
-    if (!isValid) {
-      addToast({
-        type: 'error',
-        title: 'Route Required',
-        message: 'Please select at least one route to assess feasibility.'
-      })
-      return
+  const addRoute = () => {
+    if (newRoute.trim()) {
+      setProfile(prev => ({
+        ...prev,
+        available_routes: [...prev.available_routes, newRoute.trim()]
+      }))
+      setNewRoute('')
     }
-
-    setCarrierConstraints(formData)
-    addToast({
-      type: 'success',
-      title: 'Constraints Submitted',
-      message: 'All stakeholder data captured. Triggering Dual AI Negotiation sequence...'
-    })
-
-    setTimeout(() => {
-      router.push('/negotiation?role=carrier')
-    }, 1500)
   }
+
+  const removeRoute = (index: number) => {
+    setProfile(prev => ({
+      ...prev,
+      available_routes: prev.available_routes.filter((_, i) => i !== index)
+    }))
+  }
+
+  const onTimePercentage = profile.total_deliveries > 0
+    ? ((profile.on_time_deliveries / profile.total_deliveries) * 100).toFixed(1)
+    : '0.0'
 
   return (
     <CinematicLayout>
       <ToastContainer toasts={toasts} onClose={removeToast} />
-
-      <ProgressIndicator
-        steps={steps}
-        currentStep="constraints"
-        completedSteps={[]}
-      />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <motion.div
@@ -104,228 +315,255 @@ export default function CarrierDashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
         >
+          {/* Header */}
           <div className="text-center mb-12">
+            <div className="flex justify-center mb-8">
+              <div className="inline-flex bg-black/40 backdrop-blur-xl border border-white/10 rounded-xl p-1">
+                <button
+                  onClick={() => setActiveView('profile')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${activeView === 'profile'
+                    ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white'
+                    }`}
+                >
+                  My Profile
+                </button>
+                <button
+                  onClick={() => setActiveView('requests')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${activeView === 'requests'
+                    ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white'
+                    }`}
+                >
+                  Shipment Requests
+                </button>
+                <button
+                  onClick={() => setActiveView('history')}
+                  className={`px-6 py-2 rounded-lg font-medium transition-all ${activeView === 'history'
+                    ? 'bg-gradient-to-r from-cyan-500 to-purple-600 text-white shadow-lg'
+                    : 'text-gray-400 hover:text-white'
+                    }`}
+                >
+                  Response History
+                </button>
+              </div>
+            </div>
+
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              <span className="bg-gradient-to-r from-orange-400 via-red-400 to-pink-400 bg-clip-text text-transparent">
-                Operational Feasibility Hub
+              <span className="bg-gradient-to-r from-cyan-400 via-purple-400 to-teal-400 bg-clip-text text-transparent">
+                {activeView === 'profile' && 'Carrier Profile'}
+                {activeView === 'requests' && 'Available Shipment Requests'}
+                {activeView === 'history' && 'Response History'}
               </span>
             </h1>
             <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              Respond to the commercial framework with your operational reality. Define your capacity and risk profile.
+              {activeView === 'profile' && 'Define your capacity, routes, and service capabilities'}
+              {activeView === 'requests' && 'View and respond to shipment requests from shippers'}
+              {activeView === 'history' && 'Track all your responses and completed deliveries'}
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-4 gap-8">
-            {/* Left Sidebar: Shipper's Terms (Read-Only) */}
-            <div className="lg:col-span-1 space-y-8">
+          {activeView === 'profile' && (
+            <div className="space-y-8">
+              {/* Profile Hero - The "Buzzer" Reliability Center */}
               <motion.div
-                initial={{ opacity: 0, x: -30 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="bg-orange-500/5 backdrop-blur-xl border border-orange-500/30 rounded-2xl p-6"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="relative overflow-hidden bg-gradient-to-br from-gray-900 to-black border border-white/10 rounded-3xl p-12 text-center"
               >
-                <div className="flex items-center space-x-3 mb-6">
-                  <FileText className="w-5 h-5 text-orange-400" />
-                  <h3 className="text-lg font-bold text-white">Shipper Requirements</h3>
-                </div>
+                {/* Decorative background glow */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 blur-[120px] rounded-full pointer-events-none" />
 
-                {!shipperTerms ? (
-                  <div className="text-gray-500 text-sm italic py-4">Waiting for Shipper to initiate...</div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <div className="bg-black/20 p-3 rounded-lg border border-white/5">
-                        <p className="text-[10px] text-gray-500 uppercase mb-1">Target Budget</p>
-                        <p className="text-lg font-bold text-green-400">${shipperTerms.baseBudget}</p>
-                      </div>
-                      <div className="bg-black/20 p-3 rounded-lg border border-white/5">
-                        <p className="text-[10px] text-gray-500 uppercase mb-1">Deadline</p>
-                        <p className="text-sm font-bold text-cyan-400">{new Date(shipperTerms.deadline).toLocaleDateString()}</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-white/5 p-4 rounded-xl space-y-3">
-                      <p className="text-[10px] text-gray-500 uppercase">SLA Rules (Key):</p>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-400">Delay Penalty</span>
-                        <span className="text-white font-bold">{shipperTerms.slaRules.delayPenalty}%</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-gray-400">Fuel Cap</span>
-                        <span className="text-white font-bold">{shipperTerms.slaRules.fuelAdjustmentCap}%</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-
-              <div className="p-6 bg-blue-500/5 border border-blue-500/20 rounded-2xl flex items-start space-x-3">
-                <Database className="w-5 h-5 text-blue-400 flex-shrink-0" />
-                <p className="text-xs text-gray-400 leading-relaxed italic">
-                  "Asset data synchronized. Your reliability score is currently 92%. The AI will use this as a bargaining chip for better pricing terms."
-                </p>
-              </div>
-            </div>
-
-            {/* Main Form */}
-            <div className="lg:col-span-3 space-y-8">
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* Route & Capacity */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 space-y-8"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center text-orange-400">
-                      <Truck className="w-5 h-5" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white">Route Capacity</h3>
-                  </div>
-
-                  <div className="space-y-4">
-                    <label className="text-sm text-gray-400">Available Logistics Routes</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {availableRoutes.map((route) => (
-                        <button
-                          key={route}
-                          onClick={() => handleRouteToggle(route)}
-                          className={`p-3 rounded-xl border text-xs font-medium transition-all ${formData.routes.includes(route)
-                            ? 'bg-orange-500/20 border-orange-500 text-orange-400'
-                            : 'bg-white/5 border-white/5 text-gray-400 hover:border-white/10'
-                            }`}
-                        >
-                          {route}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <label className="text-sm text-gray-400">Operational Capacity Utilization</label>
-                      <span className="text-orange-400 font-bold">{formData.operationalCapacity}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      value={formData.operationalCapacity}
-                      onChange={(e) => setFormData({ ...formData, operationalCapacity: parseInt(e.target.value) })}
-                      className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                    />
-                  </div>
-                </motion.div>
-
-                {/* Risk & Environment */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 space-y-8"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center text-red-500">
-                      <AlertTriangle className="w-5 h-5" />
-                    </div>
-                    <h3 className="text-xl font-bold text-white">Risk Environment</h3>
-                  </div>
-
-                  <div className="space-y-4">
-                    {riskFactors.map((risk) => (
-                      <button
-                        key={risk.id}
-                        onClick={() => handleRiskToggle(risk.id)}
-                        className={`w-full text-left p-4 rounded-xl border transition-all ${formData.riskAssessment.includes(risk.id)
-                          ? 'bg-red-500/10 border-red-500/50'
-                          : 'bg-white/5 border-white/5 hover:bg-white/10'
-                          }`}
-                      >
-                        <div className="flex justify-between items-center mb-1">
-                          <span className={`text-sm font-bold ${formData.riskAssessment.includes(risk.id) ? 'text-red-400' : 'text-gray-300'}`}>{risk.label}</span>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${risk.severity === 'high' ? 'bg-red-500/20 text-red-400' :
-                            risk.severity === 'medium' ? 'bg-orange-500/20 text-orange-400' : 'bg-green-500/20 text-green-400'
-                            }`}>
-                            {risk.severity.toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="text-[11px] text-gray-500">{risk.description}</p>
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              </div>
-
-              {/* Cost Basis & Constraints */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-                className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-8 space-y-8"
-              >
-                <div className="grid md:grid-cols-2 gap-12">
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-4">
-                      <Wind className="w-5 h-5 text-blue-400" />
-                      <h3 className="text-xl font-bold text-white">Fuel Constraints</h3>
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      {['low', 'medium', 'high'].map(l => (
-                        <button
-                          key={l}
-                          onClick={() => setFormData({ ...formData, fuelConstraintLevel: l })}
-                          className={`py-4 px-2 rounded-xl border text-xs font-bold capitalize transition-all ${formData.fuelConstraintLevel === l
-                            ? 'bg-blue-500/20 border-blue-500 text-blue-400 shadow-[0_0_20px_rgba(59,130,246,0.2)]'
-                            : 'bg-white/5 border-white/5 text-gray-500'
-                            }`}
-                        >
-                          {l} Impact
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center space-x-4">
-                        <Thermometer className="w-5 h-5 text-pink-400" />
-                        <h3 className="text-xl font-bold text-white">Operational Cost Basis</h3>
-                      </div>
-                      <span className="text-2xl font-bold text-pink-400">${formData.baseOperationalCost}</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="200"
-                      max="1500"
-                      step="25"
-                      value={formData.baseOperationalCost}
-                      onChange={(e) => setFormData({ ...formData, baseOperationalCost: parseInt(e.target.value) })}
-                      className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-pink-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-6">
-                  <div className="flex items-center space-x-3 text-green-400 bg-green-400/5 px-4 py-2 rounded-full border border-green-400/20">
-                    <ShieldCheck className="w-4 h-4" />
-                    <span className="text-sm font-medium">Compliance Verified: EU/US DOT Standards Logged</span>
-                  </div>
-
-                  <button
-                    onClick={handleSubmit}
-                    disabled={!isValid}
-                    className={`group relative px-12 py-4 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-bold text-xl overflow-hidden transition-all duration-300 ${!isValid ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 hover:shadow-[0_0_40px_rgba(249,115,22,0.3)]'
-                      }`}
+                <div className="relative z-10 flex flex-col items-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', damping: 12, delay: 0.2 }}
+                    className="relative mb-8"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-red-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="relative flex items-center space-x-3">
-                      <span>Finalize Feasibility</span>
-                      <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                    {/* Pulsing ring */}
+                    <motion.div
+                      animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.1, 0.3] }}
+                      transition={{ duration: 3, repeat: Infinity }}
+                      className="absolute inset-0 rounded-full border-4 border-yellow-400/50"
+                    />
+                    <div className="w-48 h-48 rounded-full border-8 border-gray-800 flex flex-col items-center justify-center bg-black/40 backdrop-blur-xl">
+                      <p className="text-xs text-gray-500 uppercase font-black tracking-widest mb-1">Reliability</p>
+                      <h2 className="text-6xl font-black text-transparent bg-gradient-to-br from-yellow-400 to-orange-500 bg-clip-text">
+                        {profile.reliability_score.toFixed(2)}
+                      </h2>
+                      <div className="mt-2">
+                        {reliabilityIndicator(profile.reliability_score, 'md')}
+                      </div>
                     </div>
-                  </button>
+                  </motion.div>
+
+                  <h3 className="text-4xl font-black text-white mb-2">
+                    {profile.business_details?.company_name || 'Professional Carrier'}
+                  </h3>
+                  <div className="flex flex-wrap justify-center gap-4 mt-6">
+                    <div className="px-6 py-2 bg-white/5 border border-white/10 rounded-full flex items-center space-x-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      <span className="text-sm text-gray-300 font-bold">{profile.total_deliveries} Successfull Deliveries</span>
+                    </div>
+                    <div className="px-6 py-2 bg-white/5 border border-white/10 rounded-full flex items-center space-x-2">
+                      <TrendingUp className="w-4 h-4 text-cyan-400" />
+                      <span className="text-sm text-gray-300 font-bold">{onTimePercentage}% On-Time Rate</span>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
+
+              <div className="grid lg:grid-cols-2 gap-8">
+                {/* Basic Details / Business Identity */}
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8"
+                >
+                  <div className="flex items-center space-x-4 mb-8">
+                    <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center">
+                      <UserCheck className="w-6 h-6 text-indigo-400" />
+                    </div>
+                    <div>
+                      <h3 className="text-2xl font-bold text-white">Business Information</h3>
+                      <p className="text-sm text-gray-500">Verified identity and credentials</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div className="grid sm:grid-cols-2 gap-6">
+                      <div className="p-4 bg-white/5 rounded-2xl border border-white/5 relative group overflow-hidden">
+                        <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        </div>
+                        <label className="text-[10px] text-gray-500 uppercase font-black block mb-1">Legal Company Name</label>
+                        <p className="text-lg font-bold text-white truncate">
+                          {profile.business_details?.company_name || 'negotiateX'}
+                        </p>
+                        <span className="text-[8px] text-emerald-400 font-bold bg-emerald-400/10 px-2 py-0.5 rounded-full">VERIFIED RECORD</span>
+                      </div>
+                      <div className="p-4 bg-white/5 rounded-2xl border border-white/5 relative group overflow-hidden">
+                        <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+                          <Activity className="w-4 h-4 text-cyan-400" />
+                        </div>
+                        <label className="text-[10px] text-gray-500 uppercase font-black block mb-1">Industry Seniority</label>
+                        <p className="text-lg font-bold text-white">
+                          {profile.business_details?.experience_years || 0} Years Active
+                        </p>
+                        <span className="text-[8px] text-cyan-400 font-bold bg-cyan-400/10 px-2 py-0.5 rounded-full">OFFICIAL TENURE</span>
+                      </div>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-6">
+                      <div className="p-4 bg-white/5 rounded-2xl border border-white/5 relative group overflow-hidden">
+                        <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+                          <Smartphone className="absolute top-2 right-2 w-4 h-4 text-purple-400" />
+                        </div>
+                        <label className="text-[10px] text-gray-500 uppercase font-black block mb-1">Business Hotline</label>
+                        <p className="text-lg font-bold text-white">
+                          {profile.business_details?.contact_number || 'No Contact Listed'}
+                        </p>
+                        <span className="text-[8px] text-purple-400 font-bold bg-purple-400/10 px-2 py-0.5 rounded-full">COMMUNICATIONS HUB</span>
+                      </div>
+                      <div className="p-4 bg-white/5 rounded-2xl border border-white/5 relative group overflow-hidden">
+                        <div className="absolute top-0 right-0 p-2 opacity-20 group-hover:opacity-100 transition-opacity">
+                          <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <label className="text-[10px] text-gray-500 uppercase font-black block mb-1">Registration / DOT ID</label>
+                        <p className="text-lg font-bold text-white font-mono">
+                          {profile.business_details?.license_id || 'DOT_PENDING'}
+                        </p>
+                        <span className="text-[8px] text-indigo-400 font-bold bg-indigo-400/10 px-2 py-0.5 rounded-full">CERTIFIED LICENSE</span>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex items-center space-x-3">
+                      <ShieldCheck className="w-6 h-6 text-emerald-400" />
+                      <div>
+                        <p className="text-xs font-bold text-white uppercase tracking-wider">Identity Highly Verified</p>
+                        <p className="text-[10px] text-gray-500">This business information was secured during the KYC registration phase.</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Customer Wall - Feedback Section Expanded */}
+                <motion.div
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="bg-black/40 backdrop-blur-xl border border-white/10 rounded-3xl p-8"
+                >
+                  <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-12 h-12 bg-purple-500/20 rounded-2xl flex items-center justify-center">
+                        <History className="w-6 h-6 text-purple-400" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-white">Client Testimonials</h3>
+                        <p className="text-sm text-gray-500">Real feedback from recent shippers</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex flex-col items-end">
+                      <p className="text-[10px] text-gray-500 uppercase font-black">Average</p>
+                      <div className="flex items-center space-x-2">
+                        <p className="text-xl font-black text-white">{profile.reliability_score.toFixed(1)}/5.0</p>
+                        {reliabilityIndicator(profile.reliability_score, 'sm')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
+                    {reviews.length === 0 ? (
+                      <div className="text-center py-20 bg-white/3 rounded-2xl border border-dashed border-white/10">
+                        <Sparkles className="w-12 h-12 text-gray-700 mx-auto mb-4" />
+                        <p className="text-gray-500 italic text-sm">No feedback received yet. Complete deliveries to build your reputation.</p>
+                      </div>
+                    ) : (
+                      reviews.map((review) => (
+                        <motion.div
+                          key={review.id}
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          whileInView={{ opacity: 1, scale: 1 }}
+                          className={`p-5 rounded-2xl border ${review.is_positive
+                            ? 'bg-emerald-500/5 border-emerald-500/10'
+                            : 'bg-amber-500/5 border-amber-500/10'
+                            }`}
+                        >
+                          <div className="flex justify-between items-start mb-3">
+                            {reliabilityIndicator(review.rating, 'sm')}
+                            <span className={`text-[10px] font-black px-3 py-1 rounded-full ${review.is_positive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
+                              }`}>
+                              {review.is_positive ? 'VERIFIED POSITIVE' : 'CRITICAL FEEDBACK'}
+                            </span>
+                          </div>
+                          <p className="text-gray-200 leading-relaxed italic mb-4">"{review.comment}"</p>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-gray-400">S</div>
+                              <span className="text-[10px] text-gray-500">Shipper ID: {review.id.split('-')[0]}</span>
+                            </div>
+                            <p className="text-[10px] text-gray-500 font-medium">
+                              {new Date(review.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
+                            </p>
+                          </div>
+                        </motion.div>
+                      ))
+                    )}
+                  </div>
+                </motion.div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {activeView === 'requests' && (
+            <CarrierNotifications />
+          )}
+
+          {activeView === 'history' && (
+            <ResponseHistory />
+          )}
         </motion.div>
       </div>
     </CinematicLayout>

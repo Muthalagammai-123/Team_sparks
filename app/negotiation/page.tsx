@@ -20,7 +20,9 @@ export default function NegotiationPage() {
     carrierConstraints,
     isLoaded,
     negotiationData: persistentNegotiationData,
-    setNegotiationData: setPersistentNegotiationData
+    setNegotiationData: setPersistentNegotiationData,
+    shipmentId,
+    carrierId
   } = useWorkflow()
   const router = useRouter()
 
@@ -45,6 +47,12 @@ export default function NegotiationPage() {
   useEffect(() => {
     if (!isLoaded || !shipperTerms || !carrierConstraints) return
 
+    // If we have results, but they are from an old version (missing agreement), clear and re-run
+    if (persistentNegotiationData && !persistentNegotiationData.agreement) {
+      setPersistentNegotiationData(null)
+      return
+    }
+
     // If we already have persistent results, just show them
     if (persistentNegotiationData) {
       setLocalNegotiationData(persistentNegotiationData)
@@ -66,7 +74,7 @@ export default function NegotiationPage() {
         const response = await fetch('http://localhost:8000/negotiate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ shipperTerms, carrierConstraints })
+          body: JSON.stringify({ shipperTerms, carrierConstraints, shipment_id: shipmentId, carrier_id: carrierId })
         })
 
         if (!response.ok) throw new Error(`Server Sync Failed: ${response.status}`)

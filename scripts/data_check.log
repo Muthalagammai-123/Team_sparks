@@ -1,0 +1,79 @@
+Script started - Data Check
+
+--- All Carrier Responses with Shipment Data ---
+
+Total: 8 responses
+
+--- Response 1 ---
+  ID: 8a2496b8-9c58-4b98-8afb-f4183806bd9a
+  Shipment ID: 1b13ff3a-7c6c-463d-a295-fd1e4e3e999d
+  Price: $61200
+  Status: accepted
+  Created: 2026-02-04T10:30:01.777449+00:00
+  Source: trichy
+  Destination: chennai
+
+--- Response 2 ---
+  ID: e42e63d5-b3ef-42cd-85e2-0b4702bb7a75
+  Shipment ID: 13191f5e-87d5-4e44-a8b9-c63bd406d08c
+  Price: $500
+  Status: pending
+  Created: 2026-02-04T10:18:30.015471+00:00
+  Source: tripur
+  Destination: chennai
+
+--- Response 3 ---
+  ID: 992ff7b6-ff3a-4a1e-ba2c-1d73c353c128
+  Shipment ID: 13191f5e-87d5-4e44-a8b9-c63bd406d08c
+  Price: $1000
+  Status: pending
+  Created: 2026-02-04T08:40:29.673574+00:00
+  Source: tripur
+  Destination: chennai
+
+--- Response 4 ---
+  ID: bfa75c4b-c1f4-4e5f-b8ac-8c25a8548c7e
+  Shipment ID: f2da1c41-710a-4550-903f-b1db878cb1b9
+  Price: $300
+  Status: pending
+  Created: 2026-02-04T08:29:04.37415+00:00
+  Source: chennai
+  Destination: trichy
+
+--- Response 5 ---
+  ID: b3f79e26-57f9-4e8d-a688-985b10aa8e2f
+  Shipment ID: 1b13ff3a-7c6c-463d-a295-fd1e4e3e999d
+  Price: $3000
+  Status: accepted
+  Created: 2026-02-04T08:28:22.990623+00:00
+  Source: trichy
+  Destination: chennai
+
+--- Response 6 ---
+  ID: cbb42148-1c7d-4c69-aec1-f6877558eb0f
+  Shipment ID: 2761444b-a869-4300-a60d-fe1b7fe33923
+  Price: $3000
+  Status: pending
+  Created: 2026-02-04T08:27:49.413802+00:00
+  Source: trichy
+  Destination: coimbatore
+
+--- Response 7 ---
+  ID: f3304767-26b4-4af0-890e-883d3cd1b004
+  Shipment ID: 2761444b-a869-4300-a60d-fe1b7fe33923
+  Price: $3000
+  Status: pending
+  Created: 2026-02-04T08:26:13.685222+00:00
+  Source: trichy
+  Destination: coimbatore
+
+--- Response 8 ---
+  ID: 86d646e3-659a-4195-9ce2-0ba7505e3d2e
+  Shipment ID: 2761444b-a869-4300-a60d-fe1b7fe33923
+  Price: $3000
+  Status: pending
+  Created: 2026-02-04T08:21:22.085323+00:00
+  Source: trichy
+  Destination: coimbatore
+
+Done

@@ -1,0 +1,17 @@
+Script started - Fix Orphaned Carrier Responses
+Looking for .env.local at: D:\credit\codeathon\.env.local
+.env.local found
+Supabase URL: Defined
+Service Key: Defined
+
+--- Checking for Orphaned Carrier Responses ---
+
+Total Carrier Responses: 8
+
+Valid Responses (with shipment data): 8
+Orphaned Responses (missing shipment data): 0
+
+No orphaned responses found. All data is clean!
+
+--- Fix Complete ---
+Script finished

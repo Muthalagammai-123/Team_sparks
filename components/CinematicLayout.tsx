@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, useMotionValue, useSpring } from 'framer-motion'
 import { Bot, FileText, Truck } from 'lucide-react'
 import Link from 'next/link'
@@ -16,19 +16,25 @@ export default function CinematicLayout({ children, showNavigation = true }: Cin
   const springX = useSpring(mouseX, { stiffness: 30, damping: 30 })
   const springY = useSpring(mouseY, { stiffness: 30, damping: 30 })
 
-  // Memoize random positions to prevent recalculation on every render
-  const randomPositions = useMemo(() => ({
-    lines: Array.from({ length: 8 }, () => ({
-      x1: Math.random() * 1920,
-      y1: Math.random() * 1080,
-      x2: Math.random() * 1920,
-      y2: Math.random() * 1080,
-    })),
-    nodes: Array.from({ length: 3 }, () => ({
-      left: Math.random() * 100,
-      top: Math.random() * 100,
-    }))
-  }), [])
+  const [randomPositions, setRandomPositions] = useState<{
+    lines: { x1: number; y1: number; x2: number; y2: number }[];
+    nodes: { left: number; top: number }[];
+  }>({ lines: [], nodes: [] })
+
+  useEffect(() => {
+    setRandomPositions({
+      lines: Array.from({ length: 8 }, () => ({
+        x1: Math.random() * 1920,
+        y1: Math.random() * 1080,
+        x2: Math.random() * 1920,
+        y2: Math.random() * 1080,
+      })),
+      nodes: Array.from({ length: 3 }, () => ({
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+      }))
+    })
+  }, [])
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -36,7 +42,7 @@ export default function CinematicLayout({ children, showNavigation = true }: Cin
       const { innerWidth, innerHeight } = window
       const x = (clientX / innerWidth - 0.5) * 2
       const y = (clientY / innerHeight - 0.5) * 2
-      
+
       mouseX.set(x * 5) // Further reduced parallax effect
       mouseY.set(y * 5)
     }
@@ -178,11 +184,14 @@ export default function CinematicLayout({ children, showNavigation = true }: Cin
                   NegotiateX
                 </span>
               </Link>
-              
-              <nav className="hidden md:flex space-x-8">
+
+              <nav className="hidden md:flex space-x-6 items-center">
                 <Link href="/" className="text-gray-300 hover:text-cyan-400 transition-colors duration-200">Home</Link>
                 <Link href="/role-selection" className="text-gray-300 hover:text-cyan-400 transition-colors duration-200">Get Started</Link>
-                <a href="#features" className="text-gray-300 hover:text-cyan-400 transition-colors duration-200">Features</a>
+                <Link href="/login" className="text-gray-300 hover:text-cyan-400 transition-colors duration-200">Login</Link>
+                <Link href="/signup" className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-lg text-white font-medium hover:from-cyan-400 hover:to-purple-500 transition-all duration-300 font-bold shadow-lg shadow-cyan-500/25">
+                  Sign Up
+                </Link>
               </nav>
 
               <div className="text-sm text-gray-400">

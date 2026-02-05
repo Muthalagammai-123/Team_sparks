@@ -148,6 +148,32 @@ function RoleSelectionContent() {
                     </div>
                   </div>
 
+                  <div className="mt-8 pt-8 border-t border-white/10 flex flex-col gap-3">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        router.push(`/signup?role=${role.id}`)
+                      }}
+                      className="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-lg font-bold text-white shadow-lg shadow-cyan-500/20 hover:from-cyan-400 hover:to-purple-500 transition-all"
+                    >
+                      Sign Up as {role.title}
+                    </motion.button>
+
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        router.push(`/login?role=${role.id}`) // Assuming login can take a role or just regular login
+                      }}
+                      className="w-full py-3 bg-white/5 border border-white/10 rounded-lg font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-all"
+                    >
+                      Login
+                    </motion.button>
+                  </div>
+
                   {selectedRole === role.id && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.8 }}
@@ -174,30 +200,7 @@ function RoleSelectionContent() {
             ))}
           </div>
 
-          {selectedRole && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="text-center"
-            >
-              <motion.button
-                onClick={() => {
-                  const href = roles.find(r => r.id === selectedRole)?.href || '/'
-                  router.push(href)
-                }}
-                whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(0,245,255,0.4)' }}
-                whileTap={{ scale: 0.95 }}
-                className="group relative px-12 py-4 bg-gradient-to-r from-cyan-500 to-purple-600 rounded-xl font-bold text-xl overflow-hidden transition-all duration-300"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-cyan-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                <div className="relative flex items-center space-x-3">
-                  <span>Continue as {roles.find(r => r.id === selectedRole)?.title}</span>
-                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </motion.button>
-            </motion.div>
-          )}
+          {/* Bottom actions removed as they are now per-card */}
         </div>
       </div>
     </CinematicLayout>

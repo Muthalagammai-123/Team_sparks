@@ -15,12 +15,16 @@ interface WorkflowContextType {
     shipperTerms: any
     carrierConstraints: any
     negotiationData: any
+    shipmentId: string | null
+    carrierId: string | null
     isLoaded: boolean
     setCustomerExpectations: (data: any) => void
     addCustomerRating: (rating: any) => void
     setShipperTerms: (data: any) => void
     setCarrierConstraints: (data: any) => void
     setNegotiationData: (data: any) => void
+    setShipmentId: (id: string) => void
+    setCarrierId: (id: string) => void
     resetWorkflow: () => void
 }
 
@@ -38,6 +42,8 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     const [shipperTerms, setShipperTermsState] = useState<any>(null)
     const [carrierConstraints, setCarrierConstraintsState] = useState<any>(null)
     const [negotiationData, setNegotiationDataState] = useState<any>(null)
+    const [shipmentId, setShipmentIdState] = useState<string | null>(null)
+    const [carrierId, setCarrierIdState] = useState<string | null>(null)
     const [isLoaded, setIsLoaded] = useState(false)
 
     // Sync with localStorage
@@ -52,6 +58,8 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
                 if (parsed.shipperTerms) setShipperTermsState(parsed.shipperTerms)
                 if (parsed.carrierConstraints) setCarrierConstraintsState(parsed.carrierConstraints)
                 if (parsed.negotiationData) setNegotiationDataState(parsed.negotiationData)
+                if (parsed.shipmentId) setShipmentIdState(parsed.shipmentId)
+                if (parsed.carrierId) setCarrierIdState(parsed.carrierId)
             } catch (e) {
                 console.error('Failed to parse workflow state', e)
             }
@@ -67,7 +75,9 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
                 customerRatings,
                 shipperTerms,
                 carrierConstraints,
-                negotiationData
+                negotiationData,
+                shipmentId,
+                carrierId
             }))
         }
     }, [state, customerExpectations, customerRatings, shipperTerms, carrierConstraints, negotiationData, isLoaded])
@@ -77,6 +87,8 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     const setShipperTerms = (data: any) => setShipperTermsState(data)
     const setCarrierConstraints = (data: any) => setCarrierConstraintsState(data)
     const setNegotiationData = (data: any) => setNegotiationDataState(data)
+    const setShipmentId = (id: string) => setShipmentIdState(id)
+    const setCarrierId = (id: string) => setCarrierIdState(id)
 
     const resetWorkflow = () => {
         localStorage.removeItem('negotiatex_workflow')
@@ -90,6 +102,8 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
         setShipperTermsState(null)
         setCarrierConstraintsState(null)
         setNegotiationDataState(null)
+        setShipmentIdState(null)
+        setCarrierIdState(null)
     }
 
     return (
@@ -100,12 +114,16 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
             shipperTerms,
             carrierConstraints,
             negotiationData,
+            shipmentId,
+            carrierId,
             isLoaded,
             setCustomerExpectations,
             addCustomerRating,
             setShipperTerms,
             setCarrierConstraints,
             setNegotiationData,
+            setShipmentId,
+            setCarrierId,
             resetWorkflow
         }}>
             {children}

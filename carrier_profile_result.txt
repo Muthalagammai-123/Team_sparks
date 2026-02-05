@@ -1,0 +1,44 @@
+﻿[dotenv@17.2.3] injecting env (5) from .env.local -- tip: ΓÜÖ∩╕Å  write to custom object with { processEnv: myObject }
+Carrier profile already exists. Updating...
+Carrier profile updated successfully: [
+  {
+    id: '5fef97e2-8c73-4f68-973e-96dcd4cc0c44',
+    carrier_id: 'fb1229db-3774-4619-89c8-7779138f3932',
+    available_capacity: 25.5,
+    capacity_unit: 'tons',
+    available_routes: [ 'Chennai-Bangalore', 'Chennai-Mumbai', 'Chennai-Hyderabad' ],
+    delivery_speed_options: {
+      express: '2-3 days',
+      standard: '5-7 days',
+      overnight: '24 hours'
+    },
+    risk_factors: { region: 'low', traffic: 'medium', weather: 'low' },
+    cost_structure: { per_mile: 3.2, base_rate: 650, fuel_surcharge: '12%' },
+    reliability_score: 4.75,
+    total_deliveries: 342,
+    on_time_deliveries: 325,
+    created_at: '2026-02-03T12:22:13.38164+00:00',
+    updated_at: '2026-02-04T22:23:43.375+00:00',
+    base_location: 'Chennai, Tamil Nadu',
+    latitude: 13.0827,
+    longitude: 80.2707
+  }
+]
+
+Γ£à Test carrier profile is ready!
+
+To test dynamic agreement generation:
+1. Go to /negotiation
+2. Fill in shipper terms
+3. In carrier constraints, add:
+   {
+     "carrier_id": "fb1229db-3774-4619-89c8-7779138f3932",
+     "business_details": {
+       "company_name": "Chennai Express Logistics",
+       "vehicle_type": "Refrigerated Truck",
+       "insurance_coverage": "$2,000,000",
+       "certifications": ["ISO 9001", "DOT Certified", "HACCP"]
+     }
+   }
+4. Click "Negotiate" to see the dynamic agreement
+5. Download the PDF with dynamic filename

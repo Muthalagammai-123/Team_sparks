@@ -1,0 +1,62 @@
+﻿node : node:internal/modules
+/cjs/loader:1247
+At line:1 char:1
++ node scripts\create_test_s
+hipment.js 2>&1 | Out-File 
+-Encoding UTF8 s ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: (node:  
+  internal/modules/cjs/lo   
+ ader:1247:String) [], R    
+emoteException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+  throw err;
+  ^
+
+Error: Cannot find module 
+'dotenv'
+Require stack:
+- D:\credit\codeathon\script
+s\create_test_shipment.js
+    at 
+Function._resolveFilename (n
+ode:internal/modules/cjs/loa
+der:1244:15)
+    at Function._load (node:
+internal/modules/cjs/loader:
+1070:27)
+    at 
+TracingChannel.traceSync (no
+de:diagnostics_channel:322:1
+4)
+    at wrapModuleLoad (node:
+internal/modules/cjs/loader:
+217:24)
+    at Module.require (node:
+internal/modules/cjs/loader:
+1335:12)
+    at require (node:interna
+l/modules/helpers:136:16)
+    at Object.<anonymous> (D
+:\credit\codeathon\scripts\c
+reate_test_shipment.js:2:1)
+    at Module._compile (node
+:internal/modules/cjs/loader
+:1562:14)
+    at Object..js (node:inte
+rnal/modules/cjs/loader:1699
+:10)
+    at Module.load (node:int
+ernal/modules/cjs/loader:131
+3:32) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'D:\\credi
+t\\codeathon\\scripts\\creat
+e_test_shipment.js' ]
+}
+
+Node.js v22.13.1

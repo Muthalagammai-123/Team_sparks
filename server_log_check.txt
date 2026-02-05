@@ -1,0 +1,37 @@
+﻿python : INFO:     
+Started server process 
+[6008]
+At line:1 char:1
++ python server.py > 
+server_log.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (I  
+  NFO:     Started serv   
+ er process [6008]:Str    
+ing) [], RemoteExcept    
+ion
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+INFO:     Waiting for 
+application startup.
+INFO:     Application 
+startup complete.
+INFO:     Uvicorn running 
+on http://0.0.0.0:8000 
+(Press CTRL+C to quit)
+Upsert failed: 'charmap' codec can't encode character '\U0001f4e1' in position 0: character maps to <undefined>
+INFO:     127.0.0.1:49185 - "POST /carrier/live-location HTTP/1.1" 200 OK
+Upsert failed: 'charmap' codec can't encode character '\U0001f4e1' in position 0: character maps to <undefined>
+INFO:     127.0.0.1:49186 - "POST /carrier/live-location HTTP/1.1" 200 OK
+Upsert failed: 'charmap' codec can't encode character '\U0001f4e1' in position 0: character maps to <undefined>
+INFO:     127.0.0.1:49194 - "POST /carrier/live-location HTTP/1.1" 200 OK
+Upsert failed: 'charmap' codec can't encode character '\U0001f4e1' in position 0: character maps to <undefined>
+INFO:     127.0.0.1:49195 - "POST /carrier/live-location HTTP/1.1" 200 OK
+Upsert failed: 'charmap' codec can't encode character '\U0001f4e1' in position 0: character maps to <undefined>
+INFO:     127.0.0.1:49197 - "POST /carrier/live-location HTTP/1.1" 200 OK
+Upsert failed: 'charmap' codec can't encode character '\U0001f4e1' in position 0: character maps to <undefined>
+INFO:     127.0.0.1:49199 - "POST /carrier/live-location HTTP/1.1" 200 OK

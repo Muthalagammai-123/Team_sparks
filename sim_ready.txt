@@ -1,0 +1,41 @@
+﻿python : Traceback (most 
+recent call last):
+At line:1 char:1
++ python 
+simulate_truck.py > 
+sim_log.txt 2>&1
++ ~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo        
+      : NotSpecified: (T  
+  raceback (most recent   
+  call last)::String)     
+[], RemoteException
+    + FullyQualifiedError 
+   Id : NativeCommandErr  
+  or
+ 
+  File "D:\credit\codeatho
+n\simulate_truck.py", 
+line 110, in <module>
+    run_simulation()
+  File "D:\credit\codeatho
+n\simulate_truck.py", 
+line 32, in run_simulation
+    print(f"\n\U0001f69a 
+[REAL-TIME LOGISTICS 
+SIMULATOR ACTIVE]")
+  File "C:\Users\alamu\App
+Data\Local\Programs\Python
+\Python310\lib\encodings\c
+p1252.py", line 19, in 
+encode
+    return codecs.charmap_
+encode(input,self.errors,e
+ncoding_table)[0]
+UnicodeEncodeError: 
+'charmap' codec can't 
+encode character 
+'\U0001f69a' in position 
+2: character maps to 
+<undefined>
